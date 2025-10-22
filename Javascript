@@ -1,0 +1,159 @@
+// ===============================
+// Data storage
+// ===============================
+let internsData = {};
+
+// Helper function to create unique key
+function makeKey(name, domain, mentor) {
+  return `${name}_${domain}_${mentor}`;
+}
+
+// ===============================
+// Section Toggle
+// ===============================
+function showDashboard() {
+  document.getElementById("dashboardSection").style.display = "block";
+  document.getElementById("assessmentSection").style.display = "none";
+}
+
+function showAssessment() {
+  document.getElementById("dashboardSection").style.display = "none";
+  document.getElementById("assessmentSection").style.display = "block";
+}
+
+// ===============================
+// Form Submission
+// ===============================
+document.getElementById("assessmentForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  const internName = document.getElementById("internName").value.trim();
+  const domain = document.getElementById("domain").value.trim();
+  const mentorName = document.getElementById("mentorName").value.trim();
+  const assessmentNo = document.getElementById("assessmentNo").value;
+  const topic = document.getElementById("assessmentTopic").value;
+  const date = document.getElementById("assessmentDate").value;
+
+  // Calculate overall score
+  const overallScore =
+    (parseInt(document.getElementById("technical").value || 0) +
+      parseInt(document.getElementById("analytical").value || 0) +
+      parseInt(document.getElementById("troubleshooting").value || 0) +
+      parseInt(document.getElementById("verbal").value || 0) +
+      parseInt(document.getElementById("written").value || 0) +
+      parseInt(document.getElementById("collaboration").value || 0) +
+      parseInt(document.getElementById("time").value || 0) +
+      parseInt(document.getElementById("ethic").value || 0) +
+      parseInt(document.getElementById("strength").value || 0) +
+      parseInt(document.getElementById("improvement").value || 0)) / 10;
+
+  // Create unique intern key
+  const internKey = makeKey(internName, domain, mentorName);
+
+  // Add new intern if not exists
+  if (!internsData[internKey]) {
+    internsData[internKey] = {
+      name: internName,
+      domain: domain,
+      mentor: mentorName,
+      score: overallScore.toFixed(1),
+      assessments: []
+    };
+  }
+
+  // Add new assessment entry
+  internsData[internKey].assessments.push({
+    no: assessmentNo,
+    topic: topic,
+    date: date,
+    score: overallScore.toFixed(1)
+  });
+
+  // Update overall score (latest)
+  internsData[internKey].score = overallScore.toFixed(1);
+
+  // Re-render table
+  renderTable();
+
+  // Close modal and reset form
+  bootstrap.Modal.getInstance(document.getElementById("assessmentModal")).hide();
+  document.getElementById("assessmentForm").reset();
+});
+
+// ===============================
+// Render Table
+// ===============================
+function renderTable() {
+  const tableBody = document.getElementById("assessmentTableBody");
+  tableBody.innerHTML = "";
+
+  Object.values(internsData).forEach(intern => {
+    const key = makeKey(intern.name, intern.domain, intern.mentor);
+    const assessmentList = intern.assessments.map(a => a.no).join(", ");
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${intern.name}</td>
+      <td>${intern.domain}</td>
+      <td>${intern.mentor}</td>
+      <td>${intern.score}</td>
+      <td>${assessmentList}</td>
+      <td>
+        <button class="btn btn-info btn-sm me-1" onclick="viewRow('${key}')">View</button>
+        <button class="btn btn-warning btn-sm me-1" onclick="editRow('${key}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="removeRow('${key}')">Remove</button>
+      </td>
+    `;
+    tableBody.appendChild(row);
+  });
+}
+
+// ===============================
+// View Intern Details
+// ===============================
+function viewRow(key) {
+  const intern = internsData[key];
+  let details = `
+    <tr><th>Intern Name</th><td>${intern.name}</td></tr>
+    <tr><th>Domain</th><td>${intern.domain}</td></tr>
+    <tr><th>Mentor</th><td>${intern.mentor}</td></tr>
+    <tr><th>Overall Score</th><td>${intern.score}</td></tr>
+    <tr><th colspan="2"><strong>Assessments</strong></th></tr>
+  `;
+
+  intern.assessments.forEach((a) => {
+    details += `
+      <tr><td colspan="2"><b>${a.no}</b></td></tr>
+      <tr><th>Topic</th><td>${a.topic}</td></tr>
+      <tr><th>Date</th><td>${a.date}</td></tr>
+      <tr><th>Score</th><td>${a.score}</td></tr>
+    `;
+  });
+
+  document.getElementById("viewTableBody").innerHTML = details;
+  new bootstrap.Modal(document.getElementById("viewModal")).show();
+}
+
+// ===============================
+// Edit Intern Entry
+// ===============================
+function editRow(key) {
+  const intern = internsData[key];
+  document.getElementById("internName").value = intern.name;
+  document.getElementById("domain").value = intern.domain;
+  document.getElementById("mentorName").value = intern.mentor;
+
+  // Remove old data so new submission replaces it
+  delete internsData[key];
+  renderTable();
+
+  new bootstrap.Modal(document.getElementById("assessmentModal")).show();
+}
+
+// ===============================
+// Remove Intern Entry
+// ===============================
+function removeRow(key) {
+  delete internsData[key];
+  renderTable();
+}
